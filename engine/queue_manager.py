@@ -27,7 +27,7 @@ In futuro questo componente potrà evolvere per:
 
 from queue import Queue
 import threading
-
+from engine.logger import log_request, log_response
 
 class RequestQueue:
 
@@ -50,6 +50,7 @@ class RequestQueue:
             max_tokens = request["max_tokens"]
             top_p = request["top_p"]
             callback = request["callback"]
+            start_time = log_request(prompt, temperature, max_tokens, top_p)
 
             response = self.runtime.generate(
                 prompt,
@@ -57,6 +58,7 @@ class RequestQueue:
                 max_tokens,
                 top_p
             )
+            log_response(start_time, response)
 
             callback(response)
 

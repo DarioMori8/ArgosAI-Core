@@ -32,8 +32,9 @@ import threading
 
 from engine.runtime import LLMRuntime
 from engine.queue_manager import RequestQueue
+from engine.config import Config
 
-MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
+MODEL_NAME = Config.MODEL_NAME
 
 app = FastAPI()
 
@@ -48,9 +49,9 @@ print("Runtime ready")
 
 class PromptRequest(BaseModel):
     prompt: str
-    temperature: float = 0.7
-    max_tokens: int = 150
-    top_p: float = 0.9
+    temperature: float=Config.DEFAULT_TEMPERATURE
+    max_tokens: int=Config.DEFAULT_MAX_TOKENS
+    top_p: float=Config.DEFAULT_TOP_P
 
 
 @app.post("/generate")
