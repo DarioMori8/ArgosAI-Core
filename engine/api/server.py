@@ -30,9 +30,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import threading
 
-from engine.runtime import LLMRuntime
-from engine.queue_manager import RequestQueue
-from engine.config import Config
+from engine.runtime.runtime import LLMRuntime
+from engine.queue.queue_manager import RequestQueue
+from engine.config.config import Config
 
 MODEL_NAME = Config.MODEL_NAME
 

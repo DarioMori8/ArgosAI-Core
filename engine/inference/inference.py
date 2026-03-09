@@ -31,6 +31,8 @@ def generate_text(model, tokenizer, device, prompt, temperature, max_tokens, top
     inputs = tokenizer(prompt, return_tensors="pt")
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
+    input_length = inputs["input_ids"].shape[1]
+
     output = model.generate(
         **inputs,
         max_new_tokens=max_tokens,
@@ -39,6 +41,8 @@ def generate_text(model, tokenizer, device, prompt, temperature, max_tokens, top
         top_p=top_p
     )
 
-    response = tokenizer.decode(output[0], skip_special_tokens=True)
+    generated_tokens = output[0][input_length:]
+
+    response = tokenizer.decode(generated_tokens, skip_special_tokens=True)
 
     return response

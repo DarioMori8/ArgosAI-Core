@@ -27,7 +27,7 @@ In futuro questo componente potrà evolvere per:
 
 from queue import Queue
 import threading
-from engine.logger import log_request, log_response
+from engine.logging.logger import log_request, log_response
 
 class RequestQueue:
 

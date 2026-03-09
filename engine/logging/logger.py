@@ -38,9 +38,18 @@ def log_response(start_time, response):
 
     duration = time.time() - start_time
 
-    token_count = len(response.split())
+    token_count = len(str(response).split())
 
     logger.info("RESPONSE GENERATED")
 
     logger.info(f"Response length (words): {token_count}")
     logger.info(f"Inference time: {duration:.2f} seconds")
+
+
+def log_error(error_type, details):
+
+    logger.error("RUNTIME ERROR")
+
+    logger.error(f"Error type: {error_type}")
+
+    logger.error(f"Details: {details}")
