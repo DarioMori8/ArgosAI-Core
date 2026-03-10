@@ -4,18 +4,18 @@ TOOL EXECUTOR
 Questo modulo esegue i tool richiesti dal modello.
 """
 
-from engine.tools.tool_registry import TOOLS
+from engine.tools.tool_registry import get_tool
 
 
 def execute_tool(action, parameters):
 
-    if action not in TOOLS:
+    tool = get_tool(action)
+
+    if tool is None:
         return {"error": f"Tool '{action}' not found"}
 
-    tool_function = TOOLS[action]
-
     try:
-        return tool_function(**parameters)
+        return tool(**parameters)
 
     except Exception as e:
         return {"error": str(e)}

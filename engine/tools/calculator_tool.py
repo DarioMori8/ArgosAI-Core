@@ -1,22 +1,8 @@
-"""
-CALCULATOR TOOL
-
-Questo tool esegue semplici espressioni matematiche.
-Viene chiamato dal runtime quando l'LLM richiede l'azione "calculator".
-"""
-
-"""
-SAFE CALCULATOR TOOL
-
-Esegue espressioni matematiche in modo sicuro senza usare eval.
-Utilizza il modulo AST per controllare le operazioni consentite.
-"""
-
 import ast
 import operator
+from engine.tools.tool_registry import register_tool
 
 
-# operatori consentiti
 OPERATORS = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
@@ -32,7 +18,15 @@ def safe_eval(node):
     if isinstance(node, ast.Constant):
         return node.value
 
+    elif isinstance(node, ast.UnaryOp):
+
+        if isinstance(node.op, ast.USub):
+            return -safe_eval(node.operand)
+
+        raise ValueError("Unary operator not allowed")
+
     elif isinstance(node, ast.BinOp):
+
         left = safe_eval(node.left)
         right = safe_eval(node.right)
         op_type = type(node.op)
@@ -55,6 +49,7 @@ def run(expression: str):
         result = safe_eval(tree.body)
 
         return {
+            "expression": expression,
             "result": result
         }
 
@@ -63,3 +58,6 @@ def run(expression: str):
         return {
             "error": str(e)
         }
+
+
+register_tool("calculator", run)

@@ -14,8 +14,7 @@ Questo approccio rende il sistema più facile da modificare e mantenere.
 class Config:
 
     # modello LLM utilizzato
-    MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
-
+    MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
     # parametri di generazione di default
     DEFAULT_TEMPERATURE = 0.7
     DEFAULT_MAX_TOKENS = 150

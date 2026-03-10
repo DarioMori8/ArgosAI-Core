@@ -75,9 +75,63 @@ class LLMRuntime:
             return validated_response.dict()
 
         # se è un tool lo eseguiamo
-        result = execute_tool(validated_response.action, validated_response.parameters or {})
+        tool_result = execute_tool(validated_response.action, validated_response.parameters or {})
+        if "error" in tool_result:
+            return {
+                "action": "respond",
+                "message": f"Tool error: {tool_result['error']}"
+            }
 
-        return {
-            "action": validated_response.action,
-            "tool_result": result
-        }
+        # secondo passaggio LLM
+        followup_prompt =  f"""
+            You are an AI agent.
+
+            The user asked:
+            {prompt}
+
+            A tool was used to answer the request.
+
+            Tool name:
+            {validated_response.action}
+
+            Tool result:
+            {tool_result}
+
+            Your task:
+            Generate the final response for the user.
+
+            Return ONLY JSON in this format:
+
+            {{
+            "action": "respond",
+            "message": "final answer for the user"
+            }}
+
+            Do not include markdown.
+            Do not include explanations.
+            Return only valid JSON.
+            """
+
+        raw_final = generate_text(
+            self.model,
+            self.tokenizer,
+            self.device,
+            followup_prompt,
+            temperature,
+            max_tokens,
+            top_p
+        )
+
+        final_json = parse_json_response(raw_final)
+
+        if final_json is None:
+            log_error("Invalid final JSON", raw_final)
+            return {"error": "invalid_final_json"}
+
+        validated_final = validate_output(final_json)
+
+        if validated_final is None:
+            log_error("Invalid final output format", raw_final)
+            return {"error": "invalid_final_output"}
+
+        return validated_final.dict(exclude_none=True)
