@@ -1,44 +1,42 @@
-"""
-PROMPT BUILDER
-
-Questo modulo costruisce il prompt che viene inviato al modello.
-
-Il suo scopo è fornire istruzioni chiare al LLM affinché produca
-un output strutturato in formato JSON conforme allo schema definito
-dal runtime.
-"""
+from engine.tools.tool_registry import list_tools
 
 
-def build_prompt(user_prompt: str) -> str:
+def build_prompt(user_prompt: str):
 
-    return f"""
-            You are an AI system that must return ONLY JSON.
+    tools = list_tools()
 
-            Allowed actions:
-            - respond
-            - calculator
+    tool_descriptions = ""
 
-            JSON schema:
+    for name, tool in tools.items():
+        tool_descriptions += f"{name}: {tool['description']}\n"
 
-            {{
-            "action": "respond",
-            "message": "text response"
-            }}
+    system_instruction = f"""
+        You are an AI agent.
 
-            OR
+        You can use the following tools:
 
-            {{
-            "action": "calculator",
-            "parameters": {{
-            "expression": "math expression"
-            }}
-            }}
+        {tool_descriptions}
 
-            Return ONLY valid JSON.
-            Do not add explanations.
+        Rules:
 
-            User request:
-            {user_prompt}
+        1. If a tool is needed, return JSON in this format:
 
-            JSON:
-            """
+        {{
+        "action": "tool_name",
+        "parameters": {{
+        "param": "value"
+        }}
+        }}
+
+        2. If no tool is needed, return:
+
+        {{
+        "action": "respond",
+        "message": "your response"
+        }}
+
+        Return ONLY JSON.
+        Do not use markdown.
+        """
+
+    return f"{system_instruction}\nUser request: {user_prompt}\n"

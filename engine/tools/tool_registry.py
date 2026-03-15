@@ -1,29 +1,32 @@
 """
 TOOL REGISTRY
 
-Questo modulo mantiene il registro dei tool disponibili
-per il runtime.
-
-Permette di registrare tool dinamicamente e recuperarli
-quando il modello richiede un'azione.
+Mantiene il registro dei tool disponibili per il runtime.
+Ogni tool ha nome, funzione e descrizione.
 """
 
 TOOLS = {}
 
 
-def register_tool(name, function):
-    """
-    Registra un nuovo tool nel registry.
-    """
-
-    TOOLS[name] = function
+def register_tool(name, function, description):
+    TOOLS[name] = {
+        "function": function,
+        "description": description
+    }
 
 
 def get_tool(name):
-    """
-    Restituisce il tool richiesto.
-    """
+    tool = TOOLS.get(name)
 
-    return TOOLS.get(name)
+    if tool:
+        return tool["function"]
 
+    return None
+
+
+def list_tools():
+    return TOOLS
+
+
+# importa i tool per registrarli
 import engine.tools.calculator_tool

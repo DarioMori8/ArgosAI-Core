@@ -60,4 +60,8 @@ def run(expression: str):
         }
 
 
-register_tool("calculator", run)
+register_tool(
+    "calculator",
+    run,
+    "Evaluate mathematical expressions"
+)
