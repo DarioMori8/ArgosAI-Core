@@ -1,42 +1,67 @@
 from engine.tools.tool_registry import list_tools
 
 
-def build_prompt(user_prompt: str):
+def build_prompt(user_prompt: str, state: dict):
 
     tools = list_tools()
 
     tool_descriptions = ""
-
     for name, tool in tools.items():
         tool_descriptions += f"{name}: {tool['description']}\n"
 
-    system_instruction = f"""
-        You are an AI agent.
+    steps_text = ""
 
-        You can use the following tools:
+    for i, step in enumerate(state["steps"]):
+        steps_text += f"""
+                        Step {i+1}:
+                        Action: {step['action']}
+                        Parameters: {step['parameters']}
+                        Result: {step['result']}
+                    """
 
-        {tool_descriptions}
+    return f"""
+            You are an AI agent.
 
-        Rules:
+            Available tools:
+            {tool_descriptions}
 
-        1. If a tool is needed, return JSON in this format:
+            Previous steps:
+            {steps_text}
 
-        {{
-        "action": "tool_name",
-        "parameters": {{
-        "param": "value"
-        }}
-        }}
+            User request:
+            {user_prompt}
 
-        2. If no tool is needed, return:
+            Rules:
 
-        {{
-        "action": "respond",
-        "message": "your response"
-        }}
+            - You can perform multiple steps
+            - Use tools if needed
+            - ALWAYS include required parameters for tools
+            - NEVER call a tool without parameters
 
-        Return ONLY JSON.
-        Do not use markdown.
-        """
+            IMPORTANT RULES:
 
-    return f"{system_instruction}\nUser request: {user_prompt}\n"
+            - Do NOT repeat the same calculation
+            - Do NOT recompute results you already obtained
+            - Always use previous results instead of recalculating
+            - After each step, decide if the task is complete
+            - If the final result is already known, respond immediately
+
+            When using a tool, return:
+
+            {{
+            "action": "tool_name",
+            "parameters": {{
+            "required_param": "value"
+            }}
+            }}
+
+            When the task is completed, you MUST return:
+
+            {{
+            "action": "respond",
+            "message": "final answer"
+            }}
+
+            Return ONLY JSON.
+            Do not use markdown.
+            """

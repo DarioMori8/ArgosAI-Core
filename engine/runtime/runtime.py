@@ -33,7 +33,7 @@ from engine.inference.inference import generate_text
 from engine.runtime.prompt_builder import build_prompt
 from engine.runtime.json_parser import parse_json_response
 from engine.runtime.validator import validate_output
-from engine.logging.logger import log_request, log_response, log_error
+from engine.logging.logger import log_agent_decision, log_request, log_response, log_error, log_tool_result
 from engine.tools.tool_executor import execute_tool
 
 class LLMRuntime:
@@ -48,90 +48,87 @@ class LLMRuntime:
 
     def generate(self, prompt, temperature, max_tokens, top_p):
 
-        structured_prompt = build_prompt(prompt)
-        
-        response = generate_text(
-            self.model,
-            self.tokenizer,
-            self.device,
-            structured_prompt,
-            temperature,
-            max_tokens,
-            top_p
-        )
+        state = {
+            "steps": []
+        }
 
-        json_response = parse_json_response(response)
+        max_steps = 5
 
-        if json_response is None:
-            log_error("Invalid JSON response", f"Raw response: {response}")
-            return {"error": "Model did not return valid JSON", "raw_response": response}
-        validated_response = validate_output(json_response)
+        for step in range(max_steps):
 
-        if validated_response is None:
-            log_error("Invalid output format", f"Raw response: {response}")
-            return {"error": "Invalid output format from model", "raw_response": response}
+            structured_prompt = build_prompt(prompt, state)
 
-        if validated_response.action == "respond":
-            return validated_response.dict()
+            response = generate_text(
+                self.model,
+                self.tokenizer,
+                self.device,
+                structured_prompt,
+                temperature,
+                max_tokens,
+                top_p
+            )
 
-        # se è un tool lo eseguiamo
-        tool_result = execute_tool(validated_response.action, validated_response.parameters or {})
-        if "error" in tool_result:
-            return {
-                "action": "respond",
-                "message": f"Tool error: {tool_result['error']}"
-            }
+            json_response = parse_json_response(response)
 
-        # secondo passaggio LLM
-        followup_prompt =  f"""
-            You are an AI agent.
+            if json_response is None:
+                log_error("Invalid JSON response", f"Raw response: {response}")
+                return {"error": "invalid_json", "raw": response}
 
-            The user asked:
-            {prompt}
+            validated = validate_output(json_response)
 
-            A tool was used to answer the request.
+            if validated is None:
+                log_error("Invalid output format", f"Raw response: {response}")
+                return {"error": "invalid_format", "raw": response}
 
-            Tool name:
-            {validated_response.action}
+            log_agent_decision(
+                step + 1,
+                validated.action,
+                validated.parameters
+            )
 
-            Tool result:
-            {tool_result}
+            # CASO 1: risposta finale già ottenuta in uno step precedente → STOP
 
-            Your task:
-            Generate the final response for the user.
+            if len(state["steps"]) >= 2:
+                last_step = state["steps"][-1]
+                prev_step = state["steps"][-2]
 
-            Return ONLY JSON in this format:
+                if (
+                    last_step["action"] == validated.action and
+                    last_step["parameters"] == validated.parameters and
+                    last_step["result"] == prev_step["result"]
+                ):
+                    return {
+                        "action": "respond",
+                        "message": f"Final result: {last_step['result']}"
+                    }
 
-            {{
+            # CASO 1: risposta finale → STOP
+            if validated.action == "respond":
+                return validated.dict(exclude_none=True)
+
+            # CASO 2: esegue tool
+            tool_result = execute_tool(validated.action, validated.parameters or {})
+
+            if "error" in tool_result:
+                return {
+                    "action": "respond",
+                    "message": f"Tool error: {tool_result['error']}"
+                }
+      
+                    
+            log_tool_result(
+                step + 1,
+                tool_result
+            )
+
+            # salva lo step
+            state["steps"].append({
+                "action": validated.action,
+                "parameters": validated.parameters,
+                "result": tool_result
+            })
+
+        return {
             "action": "respond",
-            "message": "final answer for the user"
-            }}
-
-            Do not include markdown.
-            Do not include explanations.
-            Return only valid JSON.
-            """
-
-        raw_final = generate_text(
-            self.model,
-            self.tokenizer,
-            self.device,
-            followup_prompt,
-            temperature,
-            max_tokens,
-            top_p
-        )
-
-        final_json = parse_json_response(raw_final)
-
-        if final_json is None:
-            log_error("Invalid final JSON", raw_final)
-            return {"error": "invalid_final_json"}
-
-        validated_final = validate_output(final_json)
-
-        if validated_final is None:
-            log_error("Invalid final output format", raw_final)
-            return {"error": "invalid_final_output"}
-
-        return validated_final.dict(exclude_none=True)
+            "message": "Max steps reached without a final answer"
+        }

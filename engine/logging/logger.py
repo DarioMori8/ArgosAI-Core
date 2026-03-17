@@ -53,3 +53,18 @@ def log_error(error_type, details):
     logger.error(f"Error type: {error_type}")
 
     logger.error(f"Details: {details}")
+
+
+
+def log_agent_decision(step, action, parameters):
+    logger.info("AGENT STEP")
+
+    logger.info(f"Step: {step}")
+    logger.info(f"Action: {action}")
+    logger.info(f"Parameters: {parameters}")
+
+def log_tool_result(step, result):
+    logger.info("TOOL RESULT")
+
+    logger.info(f"Step: {step}")
+    logger.info(f"Result: {result['result'] if 'result' in result else result}")
