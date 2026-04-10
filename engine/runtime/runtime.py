@@ -26,8 +26,6 @@ In futuro questo componente diventerà il cuore del Core Engine e potrà gestire
 - batching automatico delle richieste
 """
 
-
-
 from engine.model.model_manager import ModelManager
 from engine.inference.inference import generate_text
 from engine.runtime.prompt_builder import build_prompt
@@ -35,6 +33,19 @@ from engine.runtime.json_parser import parse_json_response
 from engine.runtime.validator import validate_output
 from engine.logging.logger import log_agent_decision, log_request, log_response, log_error, log_tool_result
 from engine.tools.tool_executor import execute_tool
+
+
+# numero massimo di step identici consecutivi prima di considerare il loop
+MAX_IDENTICAL_STEPS = 2
+
+
+def _is_same_step(step_a: dict, step_b: dict) -> bool:
+    """Controlla se due step sono identici per action e parameters."""
+    return (
+        step_a["action"] == step_b["action"] and
+        step_a["parameters"] == step_b["parameters"]
+    )
+
 
 class LLMRuntime:
 
@@ -53,6 +64,11 @@ class LLMRuntime:
         }
 
         max_steps = 5
+
+        # contatore step identici consecutivi
+        identical_step_count = 0
+        last_action = None
+        last_parameters = None
 
         for step in range(max_steps):
 
@@ -86,27 +102,53 @@ class LLMRuntime:
                 validated.parameters
             )
 
-            # CASO 1: risposta finale già ottenuta in uno step precedente → STOP
+            # --- RILEVAMENTO LOOP ---
+            # Confronta la decisione corrente con quella precedente.
+            # Se il modello ripete la stessa action+parameters per MAX_IDENTICAL_STEPS
+            # volte di fila, interrompe il ciclo e restituisce l'ultimo risultato noto.
 
-            if len(state["steps"]) >= 2:
-                last_step = state["steps"][-1]
-                prev_step = state["steps"][-2]
+            current_action = validated.action
+            current_parameters = validated.parameters
 
-                if (
-                    last_step["action"] == validated.action and
-                    last_step["parameters"] == validated.parameters and
-                    last_step["result"] == prev_step["result"]
-                ):
+            if (
+                current_action == last_action and
+                current_parameters == last_parameters
+            ):
+                identical_step_count += 1
+            else:
+                identical_step_count = 1
+
+            last_action = current_action
+            last_parameters = current_parameters
+
+            if identical_step_count > MAX_IDENTICAL_STEPS:
+
+                log_error(
+                    "loop_detected",
+                    f"Step identico ripetuto {identical_step_count} volte: "
+                    f"action={current_action}, parameters={current_parameters}"
+                )
+
+                # restituisce l'ultimo risultato disponibile, se esiste
+                if state["steps"]:
+                    last_result = state["steps"][-1]["result"]
                     return {
                         "action": "respond",
-                        "message": f"Final result: {last_step['result']}"
+                        "message": f"Final result: {last_result}"
                     }
 
-            # CASO 1: risposta finale → STOP
+                return {
+                    "action": "respond",
+                    "message": "Loop detected without results"
+                }
+
+            # --- FINE RILEVAMENTO LOOP ---
+
+            # risposta finale → STOP
             if validated.action == "respond":
                 return validated.dict(exclude_none=True)
 
-            # CASO 2: esegue tool
+            # esegue il tool
             tool_result = execute_tool(validated.action, validated.parameters or {})
 
             if "error" in tool_result:
@@ -114,12 +156,8 @@ class LLMRuntime:
                     "action": "respond",
                     "message": f"Tool error: {tool_result['error']}"
                 }
-      
-                    
-            log_tool_result(
-                step + 1,
-                tool_result
-            )
+
+            log_tool_result(step + 1, tool_result)
 
             # salva lo step
             state["steps"].append({

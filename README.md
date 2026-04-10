@@ -267,7 +267,7 @@ source venv/bin/activate
 Avviare il server:
 
 ```bash
-uvicorn engine.server:app --host 0.0.0.0 --port 8000
+uvicorn engine.api.server:app --host 0.0.0.0 --port 8000
 ```
 
 ---

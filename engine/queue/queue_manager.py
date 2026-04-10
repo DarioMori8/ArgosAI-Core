@@ -27,7 +27,7 @@ In futuro questo componente potrà evolvere per:
 
 from queue import Queue
 import threading
-from engine.logging.logger import log_request, log_response
+from engine.logging.logger import log_request, log_response, log_error
 
 class RequestQueue:
 
@@ -50,19 +50,32 @@ class RequestQueue:
             max_tokens = request["max_tokens"]
             top_p = request["top_p"]
             callback = request["callback"]
-            start_time = log_request(prompt, temperature, max_tokens, top_p)
 
-            response = self.runtime.generate(
-                prompt,
-                temperature,
-                max_tokens,
-                top_p
-            )
-            log_response(start_time, response)
+            try:
+                start_time = log_request(prompt, temperature, max_tokens, top_p)
 
-            callback(response)
+                response = self.runtime.generate(
+                    prompt,
+                    temperature,
+                    max_tokens,
+                    top_p
+                )
+                log_response(start_time, response)
 
-            self.queue.task_done()
+                callback(response)
+            except Exception as e:
+ 
+                log_error("worker_loop_exception", str(e))
+ 
+                # restituisce l'errore al chiamante invece di far crashare il thread
+                try:
+                    callback({"error": "runtime_exception", "details": str(e)})
+                except Exception as cb_error:
+                    log_error("callback_exception", str(cb_error))
+ 
+            finally:
+
+                self.queue.task_done()
 
     def submit(self, prompt, temperature, max_tokens, top_p, callback):
 

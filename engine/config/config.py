@@ -17,7 +17,7 @@ class Config:
     MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
     # parametri di generazione di default
     DEFAULT_TEMPERATURE = 0.7
-    DEFAULT_MAX_TOKENS = 150
+    DEFAULT_MAX_TOKENS = 500
     DEFAULT_TOP_P = 0.9
 
     # configurazione server

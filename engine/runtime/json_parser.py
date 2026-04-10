@@ -3,6 +3,17 @@ import re
 
 
 def parse_json_response(text: str):
+    """
+    Estrae il primo oggetto JSON valido da una stringa di testo.
+
+    Usa json.JSONDecoder().raw_decode() per gestire correttamente:
+    - JSON annidati (es. parameters: {key: value})
+    - Testo prima/dopo il JSON
+    - Blocchi markdown ```json ```
+    - Spazi e newline extra
+
+    Ritorna il dizionario Python se trovato, None altrimenti.
+    """
 
     if not text:
         return None
@@ -11,24 +22,21 @@ def parse_json_response(text: str):
     text = re.sub(r"```json", "", text)
     text = re.sub(r"```", "", text)
 
-    # rimuove spazi iniziali/finali
-    text = text.strip()
+    decoder = json.JSONDecoder()
 
-    # trova il primo JSON valido
+    # scansiona il testo cercando il primo '{' valido
     start = text.find("{")
 
     while start != -1:
 
-        end = text.find("}", start)
+        try:
+            # raw_decode ritorna (oggetto, indice_fine)
+            # gestisce correttamente la profondità delle parentesi graffe
+            obj, _ = decoder.raw_decode(text, start)
+            return obj
 
-        while end != -1:
-            candidate = text[start:end+1]
-
-            try:
-                return json.loads(candidate)
-            except Exception:
-                end = text.find("}", end+1)
-
-        start = text.find("{", start+1)
+        except json.JSONDecodeError:
+            # questo '{' non è l'inizio di un JSON valido, proviamo il prossimo
+            start = text.find("{", start + 1)
 
     return None
