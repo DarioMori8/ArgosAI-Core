@@ -1,6 +1,6 @@
 # Argosai-core
 
-AI Engine è un **runtime per modelli di linguaggio (LLM) eseguiti localmente** progettato per essere la base di un **Core Engine per agenti AI modulari**.
+Argosai-core è un **runtime per modelli di linguaggio (LLM) eseguiti localmente** progettato per essere la base di un **Core Engine per agenti AI modulari**.
 
 A differenza di un semplice sistema di inferenza, questo progetto permette ai modelli di linguaggio di:
 
