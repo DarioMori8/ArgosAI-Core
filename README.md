@@ -291,9 +291,3 @@ python scripts/test_api.py
 ## Obiettivo del progetto
 
 Questo progetto rappresenta la base di un Core Engine per agenti AI locali.
-
-L'obiettivo è sviluppare una piattaforma che permetta alle aziende di utilizzare modelli di linguaggio:
-
-- completamente **on-premise**
-- integrati con **strumenti software aziendali**
-- con massima **trasparenza e controllo** del processo decisionale
